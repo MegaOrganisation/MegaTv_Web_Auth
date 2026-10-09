@@ -365,8 +365,8 @@ async function handleSubmit(){
 async function handleGoogle(){
   if(!tvCode){ showStatus("Aucun code de jumelage trouvé dans l'URL.", "error"); return; }
   // revient sur cette même page (avec ?code=...) après OAuth → jumelage auto
-  const { error } = await localStorage.setItem('megatv_pending_pair', tvCode);
-  sb.auth.signInWithOAuth({
+  localStorage.setItem('megatv_pending_pair', tvCode);
+  const { error } = await sb.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo: window.location.href }
   });
