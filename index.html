@@ -365,7 +365,8 @@ async function handleSubmit(){
 async function handleGoogle(){
   if(!tvCode){ showStatus("Aucun code de jumelage trouvé dans l'URL.", "error"); return; }
   // revient sur cette même page (avec ?code=...) après OAuth → jumelage auto
-  const { error } = await sb.auth.signInWithOAuth({
+  const { error } = await localStorage.setItem('megatv_pending_pair', tvCode);
+  sb.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo: window.location.href }
   });
@@ -410,12 +411,26 @@ function showDone(){
   document.getElementById('done').classList.add('show');
 }
 
-/* OAuth return / existing session → jumelage automatique */
-sb.auth.getSession().then(({ data:{ session } })=>{
-  if(session?.user && tvCode) completePairing(session.user);
+/* QR pairing: never auto-approve a sticky browser session from a previous account.
+ * Only auto-complete after an explicit Google OAuth return (pending flag). */
+sb.auth.getSession().then(async ({ data:{ session } })=>{
+  if(!tvCode) return;
+  const pendingOauth = localStorage.getItem('megatv_pending_pair') === tvCode;
+  if(session?.user && pendingOauth){
+    localStorage.removeItem('megatv_pending_pair');
+    completePairing(session.user);
+    return;
+  }
+  if(session?.user){
+    await sb.auth.signOut();
+  }
 });
 sb.auth.onAuthStateChange((event, session)=>{
-  if(event === 'SIGNED_IN' && session?.user && tvCode) completePairing(session.user);
+  if(event === 'SIGNED_IN' && session?.user && tvCode &&
+      localStorage.getItem('megatv_pending_pair') === tvCode){
+    localStorage.removeItem('megatv_pending_pair');
+    completePairing(session.user);
+  }
 });
 
 /* ====== helpers ====== */
