@@ -368,7 +368,10 @@ async function handleGoogle(){
   localStorage.setItem('megatv_pending_pair', tvCode);
   const { error } = await sb.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: window.location.href }
+    options: {
+      redirectTo: window.location.href,
+      queryParams: { prompt: 'select_account' }
+    }
   });
   if(error){ showStatus("Google indisponible : " + error.message, "error"); }
 }
