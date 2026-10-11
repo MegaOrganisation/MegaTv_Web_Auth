@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MegaTv — Jumelage de l'appareil</title>
+<title>MegaTv &mdash; Jumelage de l'appareil</title>
 <link rel="icon" type="image/png" href="assets/mark.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -213,7 +213,7 @@ form{display:flex;flex-direction:column;gap:12px;text-align:left;}
   <div id="auth-zone">
     <div class="tabs">
       <button class="tab active" id="tab-login" onclick="setMode('login')">Connexion</button>
-      <button class="tab" id="tab-signup" onclick="setMode('signup')">Créer un compte</button>
+      <button class="tab" id="tab-signup" onclick="setMode('signup')">Cr&eacute;er un compte</button>
     </div>
 
     <button class="btn-google" onclick="handleGoogle()">
@@ -230,9 +230,9 @@ form{display:flex;flex-direction:column;gap:12px;text-align:left;}
       </div>
       <div class="field">
         <label for="password">Mot de passe</label>
-        <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" required>
+        <input type="password" id="password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" autocomplete="current-password" required>
       </div>
-      <button type="button" class="forgot" id="forgot" onclick="handleForgot()">Mot de passe oublié ?</button>
+      <button type="button" class="forgot" id="forgot" onclick="handleForgot()">Mot de passe oubli&eacute; ?</button>
       <button type="submit" class="btn" id="submit-btn">
         <span class="spinner"></span>
         <span class="btn-label">Se connecter et jumeler</span>
@@ -240,13 +240,13 @@ form{display:flex;flex-direction:column;gap:12px;text-align:left;}
     </form>
 
     <div class="status" id="status"></div>
-    <p class="foot">Sécurisé par MegaTv Cloud</p>
+    <p class="foot">S&eacute;curis&eacute; par MegaTv Cloud</p>
   </div>
 
   <div class="done" id="done">
     <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-    <h2>TV connectée !</h2>
-    <p>Ton écran est maintenant jumelé. Tu peux fermer cette page et profiter de MegaTv sur ta télé.</p>
+    <h2>TV connect&eacute;e !</h2>
+    <p>Ton &eacute;cran est maintenant jumel&eacute;. Tu peux fermer cette page et profiter de MegaTv sur ta t&eacute;l&eacute;.</p>
   </div>
 </main>
 
@@ -254,13 +254,10 @@ form{display:flex;flex-direction:column;gap:12px;text-align:left;}
 <div class="banner">
   <div class="b-left">
     <img src="assets/logo.png" alt="MegaTv">
-    <span class="b-txt"><b>Films, Séries &amp; TV en direct</b> — une seule app, toutes vos sources.</span>
+    <span class="b-txt"><b>Films, S&eacute;ries &amp; TV en direct</b> — une seule app, toutes vos sources.</span>
   </div>
   <div class="b-plats"><span>Android TV</span><span>Mobile</span><span>Fire TV</span></div>
-  <a class="b-cta" href="#" id="download-cta">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M5 21h14"/></svg>
-    Télécharger l'app
-  </a>
+  <a class="b-cta" href="#" id="download-cta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M5 21h14"/></svg>T&eacute;l&eacute;charger l'app</a>
 </div>
 
 <script>
@@ -332,7 +329,7 @@ function setMode(m){
   document.getElementById('tab-signup').classList.toggle('active', m==='signup');
   document.getElementById('forgot').style.display = m==='login' ? 'block' : 'none';
   document.getElementById('password').setAttribute('autocomplete', m==='login'?'current-password':'new-password');
-  document.querySelector('#submit-btn .btn-label').textContent = m==='login' ? 'Se connecter et jumeler' : 'Créer mon compte et jumeler';
+  document.querySelector('#submit-btn .btn-label').textContent = m==='login' ? 'Se connecter et jumeler' : 'Cr\u00e9er mon compte et jumeler';
   hideStatus();
 }
 
@@ -341,7 +338,7 @@ async function handleSubmit(){
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
   if(!email || !password){ showStatus("Renseigne ton email et ton mot de passe.", "error"); return; }
-  if(!tvCode){ showStatus("Aucun code de jumelage trouvé dans l'URL. Relance le jumelage depuis ta TV.", "error"); return; }
+  if(!tvCode){ showStatus("Aucun code de jumelage trouv\u00e9 dans l'URL. Relance le jumelage depuis ta TV.", "error"); return; }
 
   setLoading(true); hideStatus();
 
@@ -351,17 +348,17 @@ async function handleSubmit(){
     if(data.session && data.user){ await completePairing(data.user); return; }
     // email confirmation required
     setLoading(false);
-    showStatus("Compte créé ✓ Vérifie ta boîte mail pour confirmer, puis reviens sur cette page pour jumeler ta TV.", "info");
+    showStatus("Compte cr\u00e9\u00e9 ! V\u00e9rifie ta bo\u00eete mail pour confirmer, puis reviens sur cette page pour jumeler ta TV.", "info");
     return;
   }
 
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  if(error){ setLoading(false); showStatus("Échec de la connexion : " + error.message, "error"); return; }
+  if(error){ setLoading(false); showStatus("\u00c9chec de la connexion : " + error.message, "error"); return; }
   await completePairing(data.user);
 }
 
 async function handleGoogle(){
-  if(!tvCode){ showStatus("Aucun code de jumelage trouvé dans l'URL.", "error"); return; }
+  if(!tvCode){ showStatus("Aucun code de jumelage trouv\u00e9 dans l'URL.", "error"); return; }
   // revient sur cette même page (avec ?code=...) après OAuth → jumelage auto
   localStorage.setItem('megatv_pending_pair', tvCode);
   const { error } = await sb.auth.signInWithOAuth({
