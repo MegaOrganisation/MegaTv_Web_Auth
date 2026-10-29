@@ -243,6 +243,35 @@ form{display:flex;flex-direction:column;gap:12px;text-align:left;}
     <p class="foot">S&eacute;curis&eacute; par MegaTv Cloud</p>
   </div>
 
+  <div id="recovery-zone" style="display:none;">
+    <h2 style="font-family:var(--font-display);font-size:21px;font-weight:700;margin-bottom:8px;color:#fff;">Nouveau mot de passe</h2>
+    <p style="font-size:13.5px;color:var(--c-text2);margin-bottom:20px;line-height:1.45;">D&eacute;finis ton nouveau mot de passe pour ton compte MegaTv Cloud.</p>
+
+    <form id="recovery-form" onsubmit="event.preventDefault();handleUpdatePassword();">
+      <div class="field">
+        <label for="recovery-password">Nouveau mot de passe</label>
+        <input type="password" id="recovery-password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" autocomplete="new-password" minlength="6" required>
+      </div>
+      <div class="field">
+        <label for="recovery-password-confirm">Confirmer le mot de passe</label>
+        <input type="password" id="recovery-password-confirm" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" autocomplete="new-password" minlength="6" required>
+      </div>
+      <button type="submit" class="btn" id="recovery-submit-btn">
+        <span class="spinner"></span>
+        <span class="btn-label">Valider mon nouveau mot de passe</span>
+      </button>
+      <button type="button" class="forgot" style="align-self:center;margin-top:12px;" onclick="cancelRecovery()">Revenir &agrave; la connexion</button>
+    </form>
+    <div class="status" id="recovery-status"></div>
+  </div>
+
+  <div class="done" id="recovery-done">
+    <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+    <h2>Mot de passe modifi&eacute; !</h2>
+    <p id="recovery-done-desc">Ton mot de passe a bien &eacute;t&eacute; mis &agrave; jour avec succ&egrave;s.</p>
+    <button type="button" class="btn" style="margin-top:16px;width:auto;padding:12px 30px;" onclick="goToLoginAfterReset()">Se connecter</button>
+  </div>
+
   <div class="done" id="done">
     <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
     <h2>TV connect&eacute;e !</h2>
@@ -274,7 +303,7 @@ const DOWNLOAD_URL = "#";
 
 /* ====== INIT ====== */
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-const tvCode = new URLSearchParams(window.location.search).get('code');
+let tvCode = new URLSearchParams(window.location.search).get('code');
 if(tvCode){
   document.getElementById('code-row').style.display = 'flex';
   document.getElementById('code-display').textContent = tvCode;
@@ -283,6 +312,20 @@ document.getElementById('download-cta').href = DOWNLOAD_URL;
 
 let mode = 'login';       // 'login' | 'signup'
 let pairing = false;      // guard against double pairing
+let isRecoveryMode = false;
+
+function checkRecoveryFromUrl(){
+  const hash = window.location.hash || '';
+  const search = window.location.search || '';
+  if(hash.includes('type=recovery')){
+    return true;
+  }
+  const params = new URLSearchParams(search);
+  if(params.get('type') === 'recovery'){
+    return true;
+  }
+  return false;
+}
 
 /* ====== POSTER WALL (TMDB + fallback) ====== */
 async function fetchTmdbPosters(){
@@ -338,27 +381,29 @@ async function handleSubmit(){
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
   if(!email || !password){ showStatus("Renseigne ton email et ton mot de passe.", "error"); return; }
-  if(!tvCode){ showStatus("Aucun code de jumelage trouv\u00e9 dans l'URL. Relance le jumelage depuis ta TV.", "error"); return; }
+  if(!tvCode){ showStatus("Aucun code de jumelage trouvé dans l'URL. Relance le jumelage depuis ta TV.", "error"); return; }
 
   setLoading(true); hideStatus();
 
-  if(mode === 'signup'){
-    const { data, error } = await sb.auth.signUp({ email, password });
-    if(error){ setLoading(false); showStatus("Inscription impossible : " + error.message, "error"); return; }
-    if(data.session && data.user){ await completePairing(data.user); return; }
-    // email confirmation required
-    setLoading(false);
-    showStatus("Compte cr\u00e9\u00e9 ! V\u00e9rifie ta bo\u00eete mail pour confirmer, puis reviens sur cette page pour jumeler ta TV.", "info");
-    return;
-  }
+  const { data, error } = await sb.functions.invoke('tv-auth-complete', {
+    body: {
+      code: tvCode,
+      email: email,
+      password: password,
+      intent: mode
+    }
+  });
 
-  const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  if(error){ setLoading(false); showStatus("\u00c9chec de la connexion : " + error.message, "error"); return; }
-  await completePairing(data.user);
+  if(error){ setLoading(false); showStatus("Erreur : " + error.message, "error"); return; }
+  if(data && data.error){ setLoading(false); showStatus(data.error, "error"); return; }
+
+  // Authenticate locally in the browser to maintain session on the web page as well
+  await sb.auth.signInWithPassword({ email, password });
+  showDone();
 }
 
 async function handleGoogle(){
-  if(!tvCode){ showStatus("Aucun code de jumelage trouv\u00e9 dans l'URL.", "error"); return; }
+  if(!tvCode){ showStatus("Aucun code de jumelage trouvé dans l'URL.", "error"); return; }
   // revient sur cette même page (avec ?code=...) après OAuth → jumelage auto
   localStorage.setItem('megatv_pending_pair', tvCode);
   const { error } = await sb.auth.signInWithOAuth({
@@ -374,31 +419,149 @@ async function handleGoogle(){
 async function handleForgot(){
   const email = document.getElementById('email').value.trim();
   if(!email){ showStatus("Saisis d'abord ton adresse email ci-dessus.", "info"); return; }
+  if(tvCode){
+    localStorage.setItem('megatv_pending_tv_code', tvCode);
+  }
   const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
   if(error){ showStatus("Erreur : " + error.message, "error"); }
-  else showStatus("Email de réinitialisation envoyé à " + email + ".", "success");
+  else showStatus("Email de réinitialisation envoyé à " + email + ". Pense à vérifier tes spams / courriers indésirables.", "success");
+}
+
+function showRecoveryView(){
+  isRecoveryMode = true;
+  document.getElementById('auth-zone').style.display = 'none';
+  document.getElementById('done').classList.remove('show');
+  const rDone = document.getElementById('recovery-done');
+  if(rDone) rDone.classList.remove('show');
+  document.getElementById('recovery-zone').style.display = 'block';
+  hideStatus();
+}
+
+function cancelRecovery(){
+  isRecoveryMode = false;
+  document.getElementById('recovery-zone').style.display = 'none';
+  document.getElementById('auth-zone').style.display = 'block';
+  hideStatus();
+}
+
+function goToLoginAfterReset(){
+  const rDone = document.getElementById('recovery-done');
+  if(rDone) rDone.classList.remove('show');
+  document.getElementById('recovery-zone').style.display = 'none';
+  document.getElementById('auth-zone').style.display = 'block';
+  setMode('login');
+  hideStatus();
+}
+
+async function handleUpdatePassword(){
+  const p1 = document.getElementById('recovery-password').value;
+  const p2 = document.getElementById('recovery-password-confirm').value;
+  const statusEl = document.getElementById('recovery-status');
+  
+  function showRecStatus(txt, typ){
+    statusEl.textContent = txt;
+    statusEl.className = 'status show ' + typ;
+  }
+
+  if(!p1 || !p2){
+    showRecStatus("Remplis les deux champs de mot de passe.", "error");
+    return;
+  }
+  if(p1.length < 6){
+    showRecStatus("Le mot de passe doit comporter au moins 6 caractères.", "error");
+    return;
+  }
+  if(p1 !== p2){
+    showRecStatus("Les mots de passe ne correspondent pas.", "error");
+    return;
+  }
+
+  const btn = document.getElementById('recovery-submit-btn');
+  btn.disabled = true;
+  btn.classList.add('loading');
+  statusEl.className = 'status';
+
+  const { data, error } = await sb.auth.updateUser({ password: p1 });
+  btn.disabled = false;
+  btn.classList.remove('loading');
+
+  if(error){
+    showRecStatus("Erreur : " + error.message, "error");
+    return;
+  }
+
+  // Clear hash to prevent re-entering recovery mode upon refresh
+  if(window.history && window.history.replaceState){
+    const cleanUrl = window.location.pathname + (tvCode ? '?code=' + encodeURIComponent(tvCode) : '');
+    window.history.replaceState(null, '', cleanUrl);
+  }
+
+  const effectiveTvCode = tvCode || localStorage.getItem('megatv_pending_tv_code');
+  if(effectiveTvCode){
+    localStorage.removeItem('megatv_pending_tv_code');
+    tvCode = effectiveTvCode;
+    document.getElementById('recovery-zone').style.display = 'none';
+    showStatus("Mot de passe mis à jour ! Finalisation du jumelage TV...", "info");
+    const sessionRes = await sb.auth.getSession();
+    const user = data?.user || sessionRes.data?.session?.user;
+    if(user){
+      await completePairing(user);
+      return;
+    }
+  }
+
+  document.getElementById('recovery-zone').style.display = 'none';
+  const rDone = document.getElementById('recovery-done');
+  if(rDone){
+    rDone.classList.add('show');
+  } else {
+    showDone();
+  }
 }
 
 async function completePairing(user){
   if(pairing) return; pairing = true;
   setLoading(true);
-  const { error } = await sb.from('tv_pairings')
-    .update({ account_id: user.id, status: 'paired' })
-    .eq('code', tvCode);
+  const { data: { session } } = await sb.auth.getSession();
+  if(!session){
+    pairing = false;
+    setLoading(false);
+    showStatus("Session introuvable. Connecte-toi à nouveau.", "error");
+    return;
+  }
+
+  const { data, error } = await sb.functions.invoke('tv-auth-approve', {
+    body: {
+      code: tvCode,
+      refresh_token: session.refresh_token
+    }
+  });
+
   setLoading(false);
   if(error){ pairing = false; showStatus("Erreur de jumelage : " + error.message, "error"); return; }
+  if(data && data.error){ pairing = false; showStatus("Erreur de jumelage : " + data.error, "error"); return; }
   showDone();
 }
 
 function showDone(){
   document.getElementById('auth-zone').style.display = 'none';
+  if(document.getElementById('recovery-zone')) document.getElementById('recovery-zone').style.display = 'none';
   document.getElementById('code-row').style.display = 'none';
   document.getElementById('done').classList.add('show');
+}
+
+/* Immediately activate recovery view if URL indicates password recovery */
+if(checkRecoveryFromUrl()){
+  showRecoveryView();
 }
 
 /* QR pairing: never auto-approve a sticky browser session from a previous account.
  * Only auto-complete after an explicit Google OAuth return (pending flag). */
 sb.auth.getSession().then(async ({ data:{ session } })=>{
+  if(isRecoveryMode || checkRecoveryFromUrl()){
+    showRecoveryView();
+    return;
+  }
   if(!tvCode) return;
   const pendingOauth = localStorage.getItem('megatv_pending_pair') === tvCode;
   if(session?.user && pendingOauth){
@@ -411,6 +574,10 @@ sb.auth.getSession().then(async ({ data:{ session } })=>{
   }
 });
 sb.auth.onAuthStateChange((event, session)=>{
+  if(event === 'PASSWORD_RECOVERY'){
+    showRecoveryView();
+    return;
+  }
   if(event === 'SIGNED_IN' && session?.user && tvCode &&
       localStorage.getItem('megatv_pending_pair') === tvCode){
     localStorage.removeItem('megatv_pending_pair');
